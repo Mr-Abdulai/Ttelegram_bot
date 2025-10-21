@@ -4,14 +4,3 @@ services:
     env: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python bot.py"
-    envVars:
-      - key: TOKEN
-        fromService:
-          type: secret
-          name: bot-token
-          key: TOKEN
-      - key: WEBHOOK_URL
-        fromService:
-          type: secret
-          name: bot-token
-          key: WEBHOOK_URL
