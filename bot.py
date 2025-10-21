@@ -33,6 +33,7 @@ def get_video_url(url: str) -> str | None:
     """
     Uses yt-dlp to extract the direct video URL.
     """
+    logger.info(f"Attempting to extract video URL from: {url}")
     try:
         ydl_opts = {
             'format': 'best',  # Get the best quality
@@ -40,8 +41,9 @@ def get_video_url(url: str) -> str | None:
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            # The 'url' key usually holds the direct video link
-            return info.get('url')
+            video_url = info.get('url')
+            logger.info(f"Successfully extracted video URL: {video_url}")
+            return video_url
     except Exception as e:
         logger.error(f"yt-dlp error: {e}")
         return None
@@ -49,15 +51,18 @@ def get_video_url(url: str) -> str | None:
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handles non-command messages (i.e., the video links)."""
     message_text = update.message.text
+    logger.info(f"Received message: {message_text}")
     
     # Simple regex to find the first URL in the message
     url_match = re.search(r'https?://[^\s]+', message_text)
     
     if not url_match:
+        logger.info("No URL found in the message.")
         await update.message.reply_text("I didn't find a URL in your message. Please send a valid link.")
         return
 
     url = url_match.group(0)
+    logger.info(f"Found URL: {url}")
     
     # Notify the user that processing has started
     await update.message.reply_text("Got it! Fetching the video, please wait...")
@@ -66,6 +71,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     video_url = await asyncio.to_thread(get_video_url, url)
 
     if video_url:
+        logger.info(f"Sending video: {video_url}")
         try:
             # Send the video by passing the direct URL
             await context.bot.send_video(
@@ -73,6 +79,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 video=video_url,
                 caption="Here's your video!"
             )
+            logger.info("Successfully sent video.")
         except Exception as e:
             logger.error(f"Telegram send_video error: {e}")
             await update.message.reply_text(
@@ -80,6 +87,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 "The file might be too large for Telegram (max 50MB for bots by URL)."
             )
     else:
+        logger.warning("Could not get a downloadable link.")
         await update.message.reply_text(
             "Sorry, I couldn't get a downloadable link for that video."
         )
