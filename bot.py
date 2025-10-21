@@ -4,7 +4,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import yt_dlp
 import re
 import os
-from flask import Flask, request
 import asyncio
 
 # --- Configuration ---
@@ -64,7 +63,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text("Got it! Fetching the video, please wait...")
 
     # Get the direct video link
-    video_url = await context.application.create_task(get_video_url(url))
+    video_url = await asyncio.to_thread(get_video_url, url)
 
     if video_url:
         try:
@@ -97,26 +96,13 @@ def main() -> None:
     # on non-command i.e message - handle the message
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Set up the webhook
-    async def setup():
-        await application.bot.set_webhook(url=WEBHOOK_URL)
-
-    # Run the bot until the user presses Ctrl-C
-    logger.info("Bot is starting...")
-    
-    app = Flask(__name__)
-
-    @app.route('/webhook', methods=['POST'])
-    def webhook():
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.run(application.process_update(update))
-        return 'ok'
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(setup())
-
-    app.run(host='0.0.0.0', port=PORT)
-
+    # Run the bot with webhook
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path="/webhook",
+        webhook_url=WEBHOOK_URL
+    )
 
 if __name__ == "__main__":
     main()
